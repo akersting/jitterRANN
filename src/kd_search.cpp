@@ -6,12 +6,12 @@
 //----------------------------------------------------------------------
 // Copyright (c) 1997-2005 University of Maryland and Sunil Arya and
 // David Mount.  All Rights Reserved.
-// 
+//
 // This software and related documentation is part of the Approximate
 // Nearest Neighbor Library (ANN).  This software is provided under
 // the provisions of the Lesser GNU Public License (LGPL).  See the
 // file ../ReadMe.txt for further information.
-// 
+//
 // The University of Maryland (U.M.) and the authors make no
 // representations about the suitability or fitness of this software for
 // any purpose.  It is provided "as is" without express or implied
@@ -25,7 +25,8 @@
 //----------------------------------------------------------------------
 
 #include "kd_search.h"					// kd-search declarations
-
+#include <algorithm>
+#include <R.h>
 //----------------------------------------------------------------------
 //	Approximate nearest neighbor searching by kd-tree search
 //		The kd-tree is searched for an approximate nearest neighbor.
@@ -86,12 +87,23 @@ ANNmin_k		*ANNkdPointMK;			// set of k closest points
 //	annkSearch - search for the k nearest neighbors
 //----------------------------------------------------------------------
 
+// a random number generator which uses the R unif generator; used for shuffling
+//
+// returns an integer [0; n - 1]
+//
+// GetRNGstate() and PutRNGstate() are called in NN.cc for speed
+unsigned int Rrng(int n) {
+  double r = floor(unif_rand() * (double) n);
+  return r;
+}
+
 void ANNkd_tree::annkSearch(
 	ANNpoint			q,				// the query point
 	int					k,				// number of near neighbors to return
 	ANNidxArray			nn_idx,			// nearest neighbor indices (returned)
 	ANNdistArray		dd,				// the approximate nearest neighbor
-	double				eps)			// the error bound
+	int nd,  // number of data points
+	double				eps)    // the error bound
 {
 
 	ANNkdDim = dim;						// copy arguments to static equivs
@@ -106,14 +118,67 @@ void ANNkd_tree::annkSearch(
 	ANNkdMaxErr = ANN_POW(1.0 + eps);
 	ANN_FLOP(2)							// increment floating op count
 
-	ANNkdPointMK = new ANNmin_k(k);		// create set for closest k points
-										// search starting at the root
+	// create set for closest k + 1 points
+	ANNkdPointMK = new ANNmin_k(min(k + 1, nd));
+	// search starting at the root
 	root->ann_search(annBoxDistance(q, bnd_box_lo, bnd_box_hi, dim));
 
-	for (int i = 0; i < k; i++) {		// extract the k-th closest points
-		dd[i] = ANNkdPointMK->ith_smallest_key(i);
-		nn_idx[i] = ANNkdPointMK->ith_smallest_info(i);
+	// index of first point with a distance equal to the largest one
+	// among (k + 1) NN
+	int i_min = 0;
+	int i;
+	// store (k + 1) nearest neighbours
+	for (i = 0; i < min(k + 1, nd); i++) {
+	  dd[i] = ANNkdPointMK->ith_smallest_key(i);
+	  nn_idx[i] = ANNkdPointMK->ith_smallest_info(i);
+	  if (i > 0 && dd[i] > dd[i - 1]) {
+	    random_shuffle(&nn_idx[i_min], &nn_idx[i], Rrng);
+	    i_min = i;
+	  }
 	}
+
+	/* the following "if" is not necessary if random_shuffle is implemented such
+	 * that it works correctly if "first" == "last" as shown e.g. here
+	 * http://en.cppreference.com/w/cpp/algorithm/random_shuffle,
+	 * but we do not want to trust this...
+	 *
+	 * i_min == k -> (k + 1)th NN has larger distance than (k)th; we are done
+	 */
+	if (i_min < k) {
+	  i--;  // set i to min(k + 1, nd) - 1
+
+	  int powCntr = 3;  // must be at least 1
+	  int kMax = k + 1;  // how many NN can we currently access using ANNkdPointMK
+
+	  while (true) {
+	    if (i + 1 == nd) break;  // we considered all data points
+	    if (dd[i] > dd[i - 1]) break;  // this is what we are actually looking for
+
+	    i++;
+	    if (i == kMax) {  // start new search with increased kMax
+	      delete ANNkdPointMK;
+	      kMax = k + pow(2, powCntr);
+	      kMax = kMax < nd ? kMax : nd;
+	      ANNkdPointMK = new ANNmin_k(kMax);
+	      root->ann_search(annBoxDistance(q, bnd_box_lo, bnd_box_hi, dim));
+	      powCntr++;
+	    }
+
+	    // store (i + 1)th NN
+	    dd[i] = ANNkdPointMK->ith_smallest_key(i);
+	    nn_idx[i] = ANNkdPointMK->ith_smallest_info(i);
+	  }
+
+	  // potentially invalidate (i + 1)th NN, i.e. exclude it from the following
+	  // shuffle; won't happen if all points were considered and the last one
+	  // has a distance qualifying him for one of the kNNs
+	  if (i > 0 && dd[i] > dd[i - 1]) {
+	    i--;
+	  }
+
+	  random_shuffle(&nn_idx[i_min], &nn_idx[i + 1], Rrng);
+	}
+
 	delete ANNkdPointMK;				// deallocate closest point set
 }
 

@@ -20,16 +20,16 @@ extern "C"
 
 	const double error_bound = *EPS;	// enough said!
 	const double sqRad = *SQRAD;		// Squared Radius for rad search
-	
+
 	ANNkd_tree	*the_tree;	// Search structure
 
 	ANNpointArray data_pts 	= annAllocPts(nd,d);		// Allocate data points
-	ANNidxArray nn_idx 		= new ANNidx[k];		// Allocate near neigh indices
-	ANNdistArray dists 		= new ANNdist[k];		// Allocate near neighbor dists
+	ANNidxArray nn_idx 		= new ANNidx[nd];		// Allocate near neigh indices
+	ANNdistArray dists 		= new ANNdist[nd];		// Allocate near neighbor dists
 
 	int *d_ptr = new int[d];
 	int ptr = 0;
-	
+
 	// set up column offsets for query point matrix (to convert Row/Col major)
 	for(int i = 0; i < d; i++)
 	{
@@ -43,12 +43,12 @@ extern "C"
 			data_pts[i][j]=data[ d_ptr[j]++ ];
 		}
 	}
-	
+
 	if(usebdtree){
 		the_tree = new ANNbd_tree(	// Build search structure
 				data_pts,			// The data points
 				nd,					// Number of data points
-				d);					// Dimension of space				
+				d);					// Dimension of space
 	} else {
 		the_tree = new ANNkd_tree( data_pts, nd, d);
 	}
@@ -58,7 +58,9 @@ extern "C"
 	{
 		d_ptr[i] = i*nq;
 	}
-	
+
+	GetRNGstate();  // R RNG used in kd_search for shuffling
+
 	ANNpoint pq = annAllocPt(d);
 	for(int i = 0; i < nq; i++)	// Run all query points against tree
 	{
@@ -67,7 +69,7 @@ extern "C"
 		{
 			pq[j]=query[ d_ptr[j]++ ];
 		}
-		
+
 		switch(searchtype){
 			case 1:
 			the_tree->annkSearch(	// search
@@ -75,17 +77,18 @@ extern "C"
 				k,		// number of near neighbors
 				nn_idx,		// nearest neighbors (returned)
 				dists,		// distance (returned)
-				error_bound);	// error bound			
+				nd,  // number of data points
+				error_bound);    // error bound
 			break;
-			
+
 			case 2:  // Priority search
 			the_tree->annkPriSearch(pq, k, nn_idx, dists, error_bound);
 			break;
-			
-			case 3: // Fixed radius search 
-			the_tree->annkFRSearch(	pq,	sqRad, k, nn_idx, dists,error_bound);			
+
+			case 3: // Fixed radius search
+			the_tree->annkFRSearch(	pq,	sqRad, k, nn_idx, dists,error_bound);
 			break;
-		}		
+		}
 
 		for (int j = 0; j < k; j++)
 		{
@@ -93,6 +96,8 @@ extern "C"
 			nn_index[ptr++]  = nn_idx[j] + 1;	// put indices in returned array
 		}
 	}
+
+	PutRNGstate();
 
 	// Do a little bit of memory management......
 	annDeallocPt(pq);

@@ -1,2 +1,2 @@
-#' @useDynLib RANN
+#' @useDynLib jitterRANN
 NULL

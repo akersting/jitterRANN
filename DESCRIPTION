@@ -1,19 +1,20 @@
-Package: RANN
+Package: jitterRANN
 Title: Fast Nearest Neighbour Search (Wraps Arya and Mount's ANN
-        Library)
+    Library) with Random Tie-Breaking
 Version: 2.5
 Author: Sunil Arya and David Mount (for ANN), Samuel E. Kemp, Gregory Jefferis
+    (for RANN), Andreas Kersting (for random tie-breaking)
 Copyright: ANN library is copyright University of Maryland and Sunil
-        Arya and David Mount. See file COPYRIGHT for details.
+    Arya and David Mount. See file COPYRIGHT for details.
 Description: Finds the k nearest neighbours for every point in a given dataset
     in O(N log N) time using Arya and Mount's ANN library (v1.1.3). There is
     support for approximate as well as exact searches, fixed radius searches
     and bd as well as kd trees.
-Maintainer: Gregory Jefferis <jefferis@gmail.com>
+Maintainer: Andreas Kersting <andreas@akersting.de>
 License: GPL (>= 3)
-URL: https://github.com/jefferis/RANN
-Suggests: testthat
+URL: https://github.com/akersting/jitterRANN
+Encoding: UTF-8
+Suggests:
+    testthat
 NeedsCompilation: yes
-Packaged: 2015-04-20 13:21:59 UTC; jefferis
-Repository: CRAN
-Date/Publication: 2015-04-20 17:50:07
+RoxygenNote: 7.3.2

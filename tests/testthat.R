@@ -1,4 +1,4 @@
 library(testthat)
-library(RANN)
+library(jitterRANN)
 
-test_check("RANN")
+test_check("jitterRANN")
