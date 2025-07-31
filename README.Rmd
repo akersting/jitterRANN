@@ -1,0 +1,115 @@
+---
+output:
+  md_document:
+    variant: gfm
+---
+
+# jitterRANN: Fast Nearest Neighbour Search with Random Tie Breaking
+
+[![R-CMD-check](https://github.com/akersting/jitterRANN/actions/workflows/r.yml/badge.svg)](https://github.com/akersting/jitterRANN/actions/workflows/r.yml)
+
+This is a "fork" of [RANN](https://github.com/jefferislab/RANN) v2.5 which adds random tie breaking to the `standard` search type with `kd` trees.
+It is *as if* we added some jitter (i.e. some small amount of noise) to the data, hence the name of this package.
+Note though that this implementation uses an *exact* algorithm to break ties at random.
+
+## Example
+
+```{r}
+data <- data.frame(
+  x = c(rep(c(1, 2, 3), each = 5)),
+  y = c(rep(c(1, 2, 3), each = 5))
+)
+
+query <- data.frame(
+  x = rep(1, 10),
+  y = rep(1, 10)
+)
+
+print(data)
+print(query)
+```
+
+The `RANN` packages returns for each of the 10 identical query points the exact same results:
+```{r}
+RANN::nn2(data, query, k = 8)
+```
+
+While this is technically correct, many algorithms will run into issues with such results.
+E.g., I originally created `jitterRANN` for the use in a Predictive Mean Matching implementation.
+Using `RANN` here could result in severely biased imputations.
+
+Note that is not sufficient to permute points (with the same distances) afterwards, since we would still completely lack points 9 and 10, which are just as good as points 6 to 8.
+
+Here is what `jitterRANN` returns:
+```{r}
+set.seed(156)
+jitterRANN::nn2(data, query, k = 8)
+```
+Let's verify the results a bit more by looking at the relative distribution of the neighbours:
+
+```{r}
+query <- data.frame(
+  x = rep(1, 100000),
+  y = rep(1, 100000)
+)
+
+res <- jitterRANN::nn2(data, query, k = 8)
+
+for (j in 1:8) {
+  cat("\n", j, ". neighbour:\n", sep = "")
+  print(prop.table(table(res[["nn.idx"]][, j])))
+}
+```
+
+## Performance
+
+If there are no ties to break, both implementations are equally fast:
+
+```{r}
+data <- data.frame(
+  x = runif(1e5),
+  y = runif(1e5)
+)
+
+query <- data.frame(
+  x = runif(1e3),
+  y = runif(1e3)
+)
+
+bench <- microbenchmark::microbenchmark(
+  RANN = RANN::nn2(data, query, k = 10),
+  jitterRANN = jitterRANN::nn2(data, query, k = 10),
+  times = 10
+)
+
+withr::with_options(
+  list(digits = 3),
+  print(bench)
+)
+```
+
+If there is a high number of ties, this has a measurable performance impact, but I found it still acceptable also for practical use cases with big data:
+
+```{r}
+data <- data.frame(
+  x = rep(runif(1e3), 1e2),
+  y = rep(runif(1e3), 1e2)
+)
+
+query <- data.frame(
+  x = runif(1e3),
+  y = runif(1e3)
+)
+
+bench <- microbenchmark::microbenchmark(
+  RANN = RANN::nn2(data, query, k = 10),
+  jitterRANN = jitterRANN::nn2(data, query, k = 10),
+  times = 10
+)
+
+withr::with_options(
+  list(digits = 3),
+  print(bench)
+)
+```
+
