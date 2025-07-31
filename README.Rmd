@@ -38,7 +38,7 @@ While this is technically correct, many algorithms will run into issues with suc
 E.g., I originally created `jitterRANN` for the use in a Predictive Mean Matching implementation.
 Using `RANN` here could result in severely biased imputations.
 
-Note that is not sufficient to permute points (with the same distances) afterwards, since we would still completely lack points 9 and 10, which are just as good as points 6 to 8.
+Note that it is not sufficient to permute points (with the same distances) afterwards, since we would still completely lack points 9 and 10, which are just as good as points 6 to 8.
 
 Here is what `jitterRANN` returns:
 ```{r}

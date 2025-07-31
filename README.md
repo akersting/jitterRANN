@@ -95,9 +95,9 @@ with such results. E.g., I originally created `jitterRANN` for the use
 in a Predictive Mean Matching implementation. Using `RANN` here could
 result in severely biased imputations.
 
-Note that is not sufficient to permute points (with the same distances)
-afterwards, since we would still completely lack points 9 and 10, which
-are just as good as points 6 to 8.
+Note that it is not sufficient to permute points (with the same
+distances) afterwards, since we would still completely lack points 9 and
+10, which are just as good as points 6 to 8.
 
 Here is what `jitterRANN` returns:
 
@@ -219,8 +219,8 @@ withr::with_options(
 
     ## Unit: milliseconds
     ##        expr  min   lq mean median   uq  max neval
-    ##        RANN 73.2 75.9 76.6   76.5 77.3 79.8    10
-    ##  jitterRANN 75.7 76.3 76.8   76.5 77.5 78.1    10
+    ##        RANN 75.9 76.6 77.4   77.2 77.8 80.1    10
+    ##  jitterRANN 76.1 76.3 78.3   77.5 79.1 85.2    10
 
 If there is a high number of ties, this has a measurable performance
 impact, but I found it still acceptable also for practical use cases
@@ -251,5 +251,5 @@ withr::with_options(
 
     ## Unit: milliseconds
     ##        expr   min    lq  mean median    uq   max neval
-    ##        RANN  62.9  64.4  65.2   65.3  66.2  66.8    10
-    ##  jitterRANN 124.4 127.8 129.2  128.9 132.2 134.0    10
+    ##        RANN  64.6  66.2  67.6   68.3  68.8  69.9    10
+    ##  jitterRANN 128.3 130.2 136.2  132.3 141.3 157.3    10
